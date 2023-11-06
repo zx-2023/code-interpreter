@@ -6,7 +6,7 @@ import streamlit as st
 import openai
 
 # Setting up the api key and other arguments
-API_KEY = st.secrets["OPEN_API_KEY"]
+openai.api_key = st.secrets["OPEN_API_KEY"]
 openai.api_type = "azure"
 openai.api_base = "https://oh-ai-openai-scu.openai.azure.com/"
 openai.api_version = "2023-05-15"
@@ -24,13 +24,9 @@ def create_agent(filename: str):
     """
 
     # Create an OpenAI object.
-    llm = OpenAI(openai_api_key=API_KEY, openai_api_base=openai.api_base)
-    chat = ChatOpenAI(
-        model_name='gpt-3.5-turbo',
-        temperature=self.config.llm.temperature,
-        openai_api_key=self.config.llm.openai_api_key,
-        max_tokens=self.config.llm.max_tokens
-    )
+    llm = ChatOpenAI(temperature=0.0, model_name='gpt-3.5-turbo',
+                     openai_api_base=openai.api_base, deployment_id=deployment,
+                     oepnaiapi_key='"617447e973f0448fa9342c8c807bb496"')
     # Read the CSV file into a Pandas DataFrame.
     df = pd.read_csv(filename)
 

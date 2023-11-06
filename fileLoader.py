@@ -5,6 +5,7 @@ from langchain.document_loaders.csv_loader import CSVLoader
 import streamlit as st
 import tempfile
 from langchain.vectorstores import FAISS
+import pandas as pd
 from streamlit_chat import message
 import openai
 from agent import create_agent, query_agent
@@ -17,6 +18,7 @@ uploaded_file = st.sidebar.file_uploader("Please upload your CSV file", type="cs
 if uploaded_file:
     data = uploaded_file
 if data is None:
+    st.text_input("Please upload a csv file from the side bar.")
     raise TypeError("No valid file is uploaded")
    #pass filepath to CSVLoader
     # with tempfile.NamedTemporaryFile(delete=False) as tmp_file:
@@ -26,10 +28,22 @@ if data is None:
     # loader = CSVLoader(file_path=tmp_file_path, encoding="utf-8")
     # data_list = loader.load()
 
+with st.expander('Overview of your data:'):
+    df = pd.read_csv(data, index_col=0)
+    st.write(df.head(5))
+
 openai.api_type = "azure"
 openai.api_base = "https://oh-ai-openai-scu.openai.azure.com/"
 openai.api_version = "2023-05-15"
 deployment = 'gpt-35-turbo'
+
+question_list = [
+  'How many rows are there?',
+  'What is the range of values for the first column greater than 3?',
+  'How many rows have the first column value greater than 4.5?',
+  'Other']
+query_text = st.selectbox('Select an example query:', question_list, disabled=not uploaded_file)
+
 # embeddings = OpenAIEmbeddings(deployment='text-embedding-ada-002',
 #                               openai_api_key=agent.API_KEY,
 #                               openai_api_version=openai.api_version,
@@ -38,8 +52,6 @@ deployment = 'gpt-35-turbo'
 # vectorstore = FAISS.from_documents(data_list, embeddings)
 # # remember chat history via conversational retrieval chain
 # chain = ConversationalRetrievalChain.from_llm(
-#     llm=ChatOpenAI(temperature=0.0, model_name='gpt-3.5-turbo',
-#                    openai_api_base=openai.api_base, deployment_id=deployment),
 #     retriever=vectorstore.as_retriever())
 
 
@@ -84,7 +96,14 @@ with container:
         agent = create_agent(data)
 
         # Query the agent.
-        response = query_agent(agent=agent, query=user_input)
+        if query_text is not 'Other':
+            response = query_agent(agent=agent, query=query_text)
+
+        if query_text is 'Other' and uploaded_file is not None:
+            query_text = st.text_input('Enter your query:',
+                                       placeholder='Enter query here ...', disabled=not uploaded_file)
+            st.header('Output')
+            response = query_agent(agent=agent, query=user_input)
 
         # Decode the response.
         decoded_response = decode_response(response)
