@@ -1,50 +1,78 @@
 import streamlit as st
 import pandas as pd
-import json
+import time
+from utils.agent import create_agent, query_agent
+from utils.response import decode_response, write_response
+st.title("Chat with your CSV or XLSX using GPT3.5")
 
 
-def decode_response(response: str) -> dict:
-    """This function converts the string response from the model to a dictionary object.
+def file_uploader():
+    uploaded_file = st.sidebar.file_uploader("Please upload a CSV or XLSX file",
+                                             type=["csv", 'xlsx'],
+                                             accept_multiple_files=False)
 
-    Args:
-        response (str): response from the model
+    data = uploaded_file
+    if data is None:
+        st.text_input("Please upload a csv file from the side bar.")
+        raise TypeError("No valid file is uploaded")
 
-    Returns:
-        dict: dictionary with response data
+    with st.expander('Overview of your data:'):
+        if data.name[-3:] == 'csv':
+            df = pd.read_csv(data)
+        else:
+            df = pd.read_excel(data)
+        st.write(df.head(5))
+
+    return df
+
+
+def user_guide():
     """
-    return json.loads(response)
-
-def write_response(response_dict: dict):
+    display sample queries
     """
-    Write a response from an agent to a Streamlit app.
+    question_list = [
+        'How many rows are there?',
+        'What is the range of values for the first column greater than 3?',
+        'How many rows have the first column value greater than 4.5?']
+    st.write('I am a code interpreter, who are able to perform sophisticated'
+             ' data analysis, write code and even make some interesting '
+             'plots. Try submit a query as below:')
+    st.write(question_list[0])
+    st.write(question_list[1])
+    st.write(st.write(question_list[2]))
+    st.divider()
 
-    Args:
-        response_dict: The response from the agent.
+    time.sleep(1)
 
-    Returns:
-        None.
-    """
 
-    # Check if the response is an answer.
-    if "answer" in response_dict:
-        st.write(response_dict["answer"])
+def df_chat(df: pd.DataFrame = None, user_input: str = None):
+    if 'history' not in st.session_state:
+        st.session_state['history'] = []
+    # container for the user's text input
+    container = st.container()
+    with container:
+        with st.form(key='my_form', clear_on_submit=True):
+            if user_input is None:
+                user_input = st.text_input("Ask a question about your csv data here:",
+                                           placeholder="Submit query", key='input')
+                submit_button = st.form_submit_button(label='Send')
 
-    # Check if the response is a bar chart.
-    if "bar" in response_dict:
-        data = response_dict["bar"]
-        df = pd.DataFrame(data)
-        df.set_index("columns", inplace=True)
-        st.bar_chart(df)
+            if submit_button and user_input:
+                # Create an agent from the input file.
 
-    # Check if the response is a line chart.
-    if "line" in response_dict:
-        data = response_dict["line"]
-        df = pd.DataFrame(data)
-        df.set_index("columns", inplace=True)
-        st.line_chart(df)
+                agent = create_agent(df)
 
-    # Check if the response is a table.
-    if "table" in response_dict:
-        data = response_dict["table"]
-        df = pd.DataFrame(data["data"], columns=data["columns"])
-        st.table(df)
+                # Query the agent.
+                st.header('Output')
+                response = query_agent(agent=agent, query=user_input)
+
+                # Decode the response.
+                decoded_response = decode_response(response)
+
+                # Write the response to the Streamlit app.
+                write_response(decoded_response)
+
+if __name__ == "__main__":
+    df = file_uploader()
+    user_guide()
+    df_chat(df)
