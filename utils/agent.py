@@ -1,6 +1,8 @@
 # agent.py
 from langchain.chat_models import ChatOpenAI
 from langchain_experimental.agents.agent_toolkits.pandas.base import create_pandas_dataframe_agent
+from langchain_experimental.agents.agent_toolkits.csv.base import create_csv_agent
+from langchain.agents.agent_types import AgentType
 import pandas as pd
 import streamlit as st
 import openai
@@ -15,56 +17,46 @@ deployment = 'gpt-35-turbo'
 def _handle_error(error) -> str:
     return str(error)[:50]
 
-def create_agent(df: pd.DataFrame):
+def create_agent(csv_file: str):
     """
     Create an agent that can access and use a large language model (LLM).
 
     Args:
-        df: the dataframe handled by file uploader.
+        csv_file: the csv file to interact with.
 
     Returns:
         An LLM agent that can access and use the LLM.
     """
 
     # Create an OpenAI object.
-    llm = ChatOpenAI(temperature=0.0, model_name='gpt-3.5-turbo',
+    llm = ChatOpenAI(temperature=0, model_name='gpt-3.5-turbo',
                      openai_api_base=openai.api_base, deployment_id=deployment,
                      openai_api_key=openai.api_key)
 
-    # Create a Pandas DataFrame agent.
-    return create_pandas_dataframe_agent(llm, df, verbose=False,
-                                         handle_parsing_errors=_handle_error)
-
+    # Create a csv agent
+    return create_csv_agent(llm, csv_file, temperature=0,
+                            agent=AgentType.CHAT_ZERO_SHOT_REACT_DESCRIPTION,
+                            early_stopping_method="generate",
+                            verbose=True, handle_parsing_errors=True)
 def query_agent(agent, query):
     """
     Query an agent and return the response as a string.
-    Credit to a blog
     """
-
     prompt = (
-        """
-            For the following query, if it requires drawing a table, reply as follows:
-            {"table": {"columns": ["column1", "column2", ...], "data": [[value1, value2, ...], 
-            [value1, value2, ...], ...]}}
-
-            If the query requires creating a bar chart, reply as follows:
-            {"bar": {"columns": ["A", "B", "C", ...], "data": [25, 24, 10, ...]}}
-
-            If the query requires creating a line chart, reply as follows:
-            {"line": {"columns": ["A", "B", "C", ...], "data": [25, 24, 10, ...]}}
-
-            If the query requires cleaning the data, reply as follows:
-            {"line": {"columns": ["A", "B", "C", ...], "data": [25, 24, 10, ...]}}
-
-            If you do not know the answer, reply as follows:
-            {"answer": "I do not know."}
-
-            Please think step by step.
-
-            Below is the query.
-            Query: 
             """
-        + query
+                I want you to act as a machine learning engineer who is good at comprehensive
+                data analysis. For the following query, provide step-by-step instructions for 
+                building a model, demonstrating various techniques with visuals, and suggest 
+                online resources for further study. Also please answer what kind of machine 
+                learning algorithms should be used when facing towards a modeling question.
+
+                If you do not know the answer, reply as follows:
+                {"answer": "I do not know."}
+
+                Please answer the question precisely.
+                Query: 
+                """
+            + query
     )
 
     # Run the prompt through the agent.

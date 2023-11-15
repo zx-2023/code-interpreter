@@ -2,13 +2,15 @@ import streamlit as st
 import pandas as pd
 import time
 from utils.agent import create_agent, query_agent
+from .utils.file_converter import convert_to_csv
 from utils.response import decode_response, write_response
 st.title("Chat with your CSV or XLSX using GPT3.5")
 
 
 def file_uploader():
-    uploaded_file = st.sidebar.file_uploader("Please upload a CSV or XLSX file",
-                                             type=["csv", 'xlsx'],
+    uploaded_file = st.sidebar.file_uploader("Please upload a CSV/XLS/XLSX file "
+                                             "with one sheet",
+                                             type=["csv", 'xlsx', 'xls'],
                                              accept_multiple_files=False)
 
     data = uploaded_file
@@ -22,8 +24,10 @@ def file_uploader():
         else:
             df = pd.read_excel(data)
         st.write(df.head(5))
-
-    return df
+    print(data)
+    csv_file = convert_to_csv(data)
+    print(csv_file)
+    return csv_file
 
 
 def user_guide():
@@ -45,7 +49,7 @@ def user_guide():
     time.sleep(1)
 
 
-def df_chat(df: pd.DataFrame = None, user_input: str = None):
+def csv_chat(filename: str = None, user_input: str = None):
     if 'history' not in st.session_state:
         st.session_state['history'] = []
     # container for the user's text input
@@ -60,7 +64,7 @@ def df_chat(df: pd.DataFrame = None, user_input: str = None):
             if submit_button and user_input:
                 # Create an agent from the input file.
 
-                agent = create_agent(df)
+                agent = create_agent(csv_file=filename)
 
                 # Query the agent.
                 st.header('Output')
@@ -68,11 +72,12 @@ def df_chat(df: pd.DataFrame = None, user_input: str = None):
 
                 # Decode the response.
                 decoded_response = decode_response(response)
-
+                print(decoded_response)
                 # Write the response to the Streamlit app.
                 write_response(decoded_response)
 
+
 if __name__ == "__main__":
-    df = file_uploader()
+    csv_file = file_uploader()
     user_guide()
-    df_chat(df)
+    csv_chat(filename=csv_file)

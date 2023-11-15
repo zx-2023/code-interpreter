@@ -1,6 +1,6 @@
 import sys
 from random import randint
-from ..interface import df_chat
+from ..interface import csv_chat
 
 sys.path.append("..")
 
@@ -27,7 +27,7 @@ def test_math():
     Round to 2 decimal places.
     """.strip()
 
-    messages = df_chat(user_input=test_math_query)
+    messages = csv_chat(user_input=test_math_query)
     print(n1)
     print(n2)
     print(messages)
