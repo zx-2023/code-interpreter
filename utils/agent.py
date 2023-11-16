@@ -1,9 +1,7 @@
 # agent.py
 from langchain.chat_models import ChatOpenAI
-from langchain_experimental.agents.agent_toolkits.pandas.base import create_pandas_dataframe_agent
 from langchain_experimental.agents.agent_toolkits.csv.base import create_csv_agent
 from langchain.agents.agent_types import AgentType
-import pandas as pd
 import streamlit as st
 import openai
 
@@ -14,10 +12,12 @@ openai.api_base = "https://oh-ai-openai-scu.openai.azure.com/"
 openai.api_version = "2023-05-15"
 deployment = 'gpt-35-turbo'
 
+
 def _handle_error(error) -> str:
     return str(error)[:50]
 
-def create_agent(csv_file: str):
+
+def create_agent(csv_file: st.runtime.uploaded_file_manager.UploadedFile):
     """
     Create an agent that can access and use a large language model (LLM).
 
@@ -38,6 +38,8 @@ def create_agent(csv_file: str):
                             agent=AgentType.CHAT_ZERO_SHOT_REACT_DESCRIPTION,
                             early_stopping_method="generate",
                             verbose=True, handle_parsing_errors=True)
+
+
 def query_agent(agent, query):
     """
     Query an agent and return the response as a string.
@@ -53,7 +55,7 @@ def query_agent(agent, query):
                 If you do not know the answer, reply as follows:
                 {"answer": "I do not know."}
 
-                Please answer the question precisely.
+                Please think step by step and answer the question precisely.
                 Query: 
                 """
             + query

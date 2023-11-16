@@ -1,5 +1,6 @@
 import xlrd
 import csv
+import pandas as pd
 
 
 def convert_to_csv(excel_file):
@@ -12,5 +13,12 @@ def convert_to_csv(excel_file):
             for row in range(worksheet.nrows):
                 wr.writerow(worksheet.row_values(row))
     print(csv_file)
+
+    return csv_file
+
+def convert_to_csv(excel_file):
+    df = pd.read_excel(excel_file)
+
+    df.to_csv(csv_file)
 
     return csv_file

@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import time
 from utils.agent import create_agent, query_agent
-from .utils.file_converter import convert_to_csv
+# from utils.file_converter import convert_to_csv
 from utils.response import decode_response, write_response
 st.title("Chat with your CSV or XLSX using GPT3.5")
 
@@ -24,10 +24,8 @@ def file_uploader():
         else:
             df = pd.read_excel(data)
         st.write(df.head(5))
-    print(data)
-    csv_file = convert_to_csv(data)
-    print(csv_file)
-    return csv_file
+    assert type(data) == st.runtime.uploaded_file_manager.UploadedFile
+    return data
 
 
 def user_guide():
@@ -49,7 +47,8 @@ def user_guide():
     time.sleep(1)
 
 
-def csv_chat(filename: str = None, user_input: str = None):
+def csv_chat(file: st.runtime.uploaded_file_manager.UploadedFile = None,
+             user_input: str = None):
     if 'history' not in st.session_state:
         st.session_state['history'] = []
     # container for the user's text input
@@ -57,14 +56,14 @@ def csv_chat(filename: str = None, user_input: str = None):
     with container:
         with st.form(key='my_form', clear_on_submit=True):
             if user_input is None:
-                user_input = st.text_input("Ask a question about your csv data here:",
+                user_input = st.text_input("Ask a question about your data here:",
                                            placeholder="Submit query", key='input')
                 submit_button = st.form_submit_button(label='Send')
 
             if submit_button and user_input:
                 # Create an agent from the input file.
 
-                agent = create_agent(csv_file=filename)
+                agent = create_agent(csv_file=file)
 
                 # Query the agent.
                 st.header('Output')
@@ -79,5 +78,6 @@ def csv_chat(filename: str = None, user_input: str = None):
 
 if __name__ == "__main__":
     csv_file = file_uploader()
+    print(type(csv_file))
     user_guide()
-    csv_chat(filename=csv_file)
+    csv_chat(file=csv_file)
