@@ -1,83 +1,118 @@
+import langchain
 import streamlit as st
+import openai
+from langchain.callbacks import StreamlitCallbackHandler
 import pandas as pd
-import time
-from utils.agent import create_agent, query_agent
-# from utils.file_converter import convert_to_csv
-from utils.response import decode_response, write_response
-st.title("Chat with your CSV or XLSX using GPT3.5")
+import os
+from utils.userguide import welcome_message
+from utils.agent import create_agent
+
+st.title("Chat with your data using GPT3.5")
+langchain.debug = True
+openai.api_type = "azure"
+openai.api_base = "https://oh-ai-openai-scu.openai.azure.com/"
+openai.api_version = "2023-05-15"
+deployment = 'gpt-35-turbo'
+API_KEY = st.sidebar.text_input(
+    label="OpenAI API Key",
+    type="password",
+)
+
+data_format = {
+    "csv": pd.read_csv,
+    "xls": pd.read_excel,
+    "xlsx": pd.read_excel,
+}
 
 
-def file_uploader():
-    uploaded_file = st.sidebar.file_uploader("Please upload a CSV/XLS/XLSX file "
-                                             "with one sheet",
-                                             type=["csv", 'xlsx', 'xls'],
-                                             accept_multiple_files=False)
-
-    data = uploaded_file
-    if data is None:
-        st.text_input("Please upload a csv file from the side bar.")
-        raise TypeError("No valid file is uploaded")
-
-    with st.expander('Overview of your data:'):
-        if data.name[-3:] == 'csv':
-            df = pd.read_csv(data)
-        else:
-            df = pd.read_excel(data)
-        st.write(df.head(5))
-    assert type(data) == st.runtime.uploaded_file_manager.UploadedFile
-    return data
-
-
-def user_guide():
+def clear_submit():
     """
-    display sample queries
+    Clear the Submit Button State
+    Returns:
+
     """
-    question_list = [
-        'How many rows are there?',
-        'What is the range of values for the first column greater than 3?',
-        'How many rows have the first column value greater than 4.5?']
-    st.write('I am a code interpreter, who are able to perform sophisticated'
-             ' data analysis, write code and even make some interesting '
-             'plots. Try submit a query as below:')
-    st.write(question_list[0])
-    st.write(question_list[1])
-    st.write(st.write(question_list[2]))
-    st.divider()
-
-    time.sleep(1)
+    st.session_state["submit"] = False
 
 
-def csv_chat(file: st.runtime.uploaded_file_manager.UploadedFile = None,
-             user_input: str = None):
-    if 'history' not in st.session_state:
-        st.session_state['history'] = []
-    # container for the user's text input
-    container = st.container()
-    with container:
-        with st.form(key='my_form', clear_on_submit=True):
-            if user_input is None:
-                user_input = st.text_input("Ask a question about your data here:",
-                                           placeholder="Submit query", key='input')
-                submit_button = st.form_submit_button(label='Send')
-
-            if submit_button and user_input:
-                # Create an agent from the input file.
-
-                agent = create_agent(csv_file=file)
-
-                # Query the agent.
-                st.header('Output')
-                response = query_agent(agent=agent, query=user_input)
-
-                # Decode the response.
-                decoded_response = decode_response(response)
-                print(decoded_response)
-                # Write the response to the Streamlit app.
-                write_response(decoded_response)
+@st.cache_data(ttl="2h")
+def data_loader(uploaded_file):
+    try:
+        ext = os.path.splitext(uploaded_file.name)[1][1:].lower()
+    except ValueError as e:
+        ext = uploaded_file.split(".")[-1]
+        if not ext:
+            raise e
+    if ext in data_format:
+        return data_format[ext](uploaded_file)
+    else:
+        st.error(f"Unsupported file format: {ext}")
+        return None
 
 
-if __name__ == "__main__":
-    csv_file = file_uploader()
-    print(type(csv_file))
-    user_guide()
-    csv_chat(file=csv_file)
+uploaded_file = st.file_uploader(
+    "Upload a Data file",
+    type=list(data_format.keys()),
+    help="A non-empty excel file can be analyzed by the assisatant",
+    on_change=clear_submit,
+)
+
+if uploaded_file is None:
+    st.warning(
+        "Please upload a valid csv or excel")
+
+if uploaded_file:
+    df = data_loader(uploaded_file)
+    if df is None:
+        st.stop()
+    if df is not None:
+        st.write("Overview of your uploaded data:")
+        st.dataframe(df.head())
+
+welcome_message()
+
+if "messages" not in st.session_state or st.sidebar.button("Clear conversation history"):
+    st.session_state["messages"] = [{"role": "assistant",
+                                     "content": "How can I help you with your data?"}]
+
+for msg in st.session_state.messages:
+    st.chat_message(msg["role"]).write(msg["content"])
+
+if query := st.chat_input(placeholder="Submit a query here"):
+    prompt = (
+            """
+                I want you to act as a data analyst who is good at comprehensive
+                data analysis and machine learning. For the following query, provide step-by-step instructions for 
+                building a model, demonstrating various techniques with visuals, and suggest 
+                online resources for further study. Also please answer what kind of machine 
+                learning algorithms should be used when facing towards a modeling question.
+                
+                You will not only answer in natural language, but also generate and run Python code.
+                When requested to generate code, always test it anf check if it works before producing the final answer.
+                If you do not know the answer, reply as follows:
+                {"answer": "I do not know."}
+                
+                Do not overthink the problem, try to answer it precisely.
+                Query: 
+                """
+            + query
+    )
+    st.session_state.messages.append({"role": "user", "content": prompt})
+    st.chat_message("user").write(query)
+
+    if not API_KEY:
+        st.info("Please add your OpenAI API key to continue.")
+        st.stop()
+
+    pandas_df_agent = create_agent(api_key=API_KEY, df=df)
+    with st.chat_message("assistant"):
+        st_cb = StreamlitCallbackHandler(st.container(), expand_new_thoughts=False)
+        try:
+            response = pandas_df_agent.run(st.session_state.messages, callbacks=[st_cb])
+        except ValueError as e:
+            response = str(e)
+            if not response.startswith("Could not parse LLM output: `"):
+                raise e
+            response = response.removeprefix("Could not parse LLM output: `").removesuffix("`")
+        st.session_state.messages.append({"role": "assistant", "content": response})
+        st.write(response)
+

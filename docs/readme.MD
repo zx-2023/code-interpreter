@@ -5,8 +5,8 @@ Currently, it supports some comprehensive data analysis and plotting functions, 
 
 To start with the program, user "pip install requirements.txt -r" first, then type in "streamlit run interface.py" from the command prompt  
 
-To properly use the demo, make sure you have created a file named <secrets.toml>   
-which has "OPEN_API_KEY=***" in it(*** stands for your openai api key), otherwise you'll have to create an environment variable  
+To properly use the demo, make sure you input your openai key from the app.
+
 
 Feel free to try questions such as:  
 query = "who is Albert Einstein?"

@@ -1,8 +1,11 @@
-import sys
+import streamlit as st
 from random import randint
-from ..interface import csv_chat
+from ..interface import create_agent
 
-sys.path.append("..")
+API_KEY = st.sidebar.text_input(
+    label="OpenAI API Key",
+    type="password",
+)
 
 
 def test_math():
@@ -26,9 +29,6 @@ def test_math():
 
     Round to 2 decimal places.
     """.strip()
-
-    messages = csv_chat(user_input=test_math_query)
-    print(n1)
-    print(n2)
-    print(messages)
+    test_agent = create_agent(api_key=API_KEY)
+    messages = test_agent(user_input=test_math_query)
     assert str(round(test_result, 2)) in messages[-1]["message"]
