@@ -3,7 +3,7 @@
 interface.py is the main function of the interpreter, it generates responses to the query input by the end user.
 Currently, it supports some comprehensive data analysis and plotting functions, and can do some elementary machine learning project with a proper query.  
 
-To start with the program, user "pip install requirements.txt -r" first, then type in "streamlit run interface.py" from the command prompt  
+To start with the program, user "__pip install requirements.txt -r__" first, then type in "__streamlit run interface.py__" from the command prompt  
 
 To properly use the demo, make sure you input your openai key from the app.
 
