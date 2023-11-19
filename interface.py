@@ -2,6 +2,7 @@ import langchain
 import streamlit as st
 import openai
 from langchain.callbacks import StreamlitCallbackHandler
+
 import pandas as pd
 import os
 from utils.userguide import welcome_message
@@ -96,7 +97,7 @@ if query := st.chat_input(placeholder="Submit a query here"):
                 """
             + query
     )
-    st.session_state.messages.append({"role": "user", "content": prompt})
+    st.session_state.messages.append({"role": "user", "content": query})
     st.chat_message("user").write(query)
 
     if not API_KEY:
@@ -115,4 +116,3 @@ if query := st.chat_input(placeholder="Submit a query here"):
             response = response.removeprefix("Could not parse LLM output: `").removesuffix("`")
         st.session_state.messages.append({"role": "assistant", "content": response})
         st.write(response)
-
